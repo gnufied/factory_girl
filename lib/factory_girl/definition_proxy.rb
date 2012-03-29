@@ -140,6 +140,48 @@ module FactoryGirl
       @definition.declare_attribute(Declaration::Association.new(name, options))
     end
 
+    def pick_from_fixtures
+      declared_attributes = find_declared_attributes
+      declared_attributes << "id"
+      access_fixtures(declared_attributes)
+    end
+
+    def find_declared_attributes
+      @definition.declarations.map do |declaration|
+        if declaration.is_a?(FactoryGirl::Declaration::Association)
+          "#{declaration.name}_id"
+        else
+          declaration.name.to_s
+        end
+      end
+    end
+
+    def access_fixtures(declared_attributes)
+      current_fixture_name = @definition.declarations.instance_variable_get(:"@name").to_s.tableize
+      fixture_file = File.join(Rails.root,"spec/fixtures/#{current_fixture_name}.yml")
+      if File.exists?(fixture_file)
+        data = YAML.load_file(fixture_file).values.first
+        define_from_hash(data,declared_attributes)
+      end
+    end
+
+    def define_from_hash(data,declared_attributes)
+      keys = select_keys_from_fixtures(data.keys,declared_attributes)
+      keys.each do |key|
+        @definition.declare_attribute(Declaration::Static.new(key, data[key]))
+      end
+    end
+
+    def select_keys_from_fixtures(keys,declared_attributes)
+      keys.reject do |key|
+        if key !~ /_id$/
+          declared_attributes.include?(key)
+        else
+          declared_attributes.any? { |x| "#{x}_id" == key }
+        end
+      end
+    end
+
     def to_create(&block)
       @definition.to_create(&block)
     end
