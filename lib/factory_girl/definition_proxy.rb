@@ -167,6 +167,11 @@ module FactoryGirl
 
     def define_from_hash(data,declared_attributes)
       keys = select_keys_from_fixtures(data.keys,declared_attributes)
+
+      # remove columns like 'type' which activerecord understands.
+      # dont make the load from fixtures.
+      keys.delete_if { |k| k == "type" }
+
       keys.each do |key|
         @definition.declare_attribute(Declaration::Static.new(key, data[key]))
       end
